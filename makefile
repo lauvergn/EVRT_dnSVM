@@ -52,11 +52,6 @@ endif
 # Operating system, OS? automatic using uname:
 OS :=$(shell uname)
 
-# about EVRT, path, versions ...:
-LOC_path:= $(shell pwd)
-TNUM_ver:=$(shell awk '/Tnum/ {print $$3}' $(LOC_path)/version-EVR-T)
-TANA_ver:=$(shell awk '/Tana/ {print $$3}' $(LOC_path)/version-EVR-T)
-EVR_ver:=$(shell awk '/EVR/ {print $$3}' $(LOC_path)/version-EVR-T)
 
 # Extension for the object directory and the library
 ifeq ($(FFC),mpifort)
@@ -74,7 +69,7 @@ $(shell [ -d $(OBJ_DIR) ] || mkdir -p $(OBJ_DIR))
 MOD_DIR=$(OBJ_DIR)
 #
 # library name
-LIBA=libFOR_EVRT$(extlibwi_obj).a
+LIBA=libEVRT_dnSVM$(extlibwi_obj).a
 #=================================================================================
 # cpp preprocessing
 CPPSHELL = -D__COMPILE_DATE="\"$(shell date +"%a %e %b %Y - %H:%M:%S")\"" \
@@ -82,16 +77,13 @@ CPPSHELL = -D__COMPILE_DATE="\"$(shell date +"%a %e %b %Y - %H:%M:%S")\"" \
            -D__COMPILER="'$(FFC)'" \
            -D__COMPILER_VER="'$(FC_VER)'" \
            -D__COMPILER_OPT="'$(FFLAGS0)'" \
-           -D__COMPILER_LIBS="'$(FLIB0)'" \
-           -D__EVRTPATH="'$(LOC_path)'" \
-           -D__EVR_VER="'$(EVR_ver)'" \
-           -D__TNUM_VER="'$(TNUM_ver)'" \
-           -D__TANA_VER="'$(TANA_ver)'"
+           -D__COMPILER_LIBS="'$(FLIB0)'"
 
 #===============================================================================
 #
 #===============================================================================
 # external lib (QDUtil, AD_dnSVM ...)
+LOC_path:= $(shell pwd)
 ifeq ($(ExtLibDIR),)
   ExtLibDIR := $(LOC_path)/Ext_Lib
 endif
@@ -127,14 +119,14 @@ ifeq ($(FFC),gfortran)
   # integer kind management
   ifeq ($(INT),8)
     FFLAGS   += -fdefault-integer-8
-    FFLAGS0   += -fdefault-integer-8
+    FFLAGS0  += -fdefault-integer-8
     CPPSHELL += -Dint8=1
   endif
 
   # omp management
   ifeq ($(OOMP),1)
     FFLAGS   += -fopenmp
-    FFLAGS0   += -fopenmp
+    FFLAGS0  += -fopenmp
     CPPSHELL += -Drun_openMP=1
   endif
 
@@ -160,12 +152,6 @@ ifeq ($(FFC),gfortran)
       # linux libs
       FLIB  += -llapack -lblas
       FLIB0 += -llapack -lblas
-
-      #
-      # linux libs with mkl and with openmp
-      #FLIB = -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_gnu_thread
-      # linux libs with mkl and without openmp
-      #FLIB = -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_sequential
     endif
   endif
 
@@ -177,11 +163,11 @@ endif
 #=================================================================================
 # ifort compillation v17 v18 with mkl
 #=================================================================================
-ifeq ($(FFC),ifort)
+ifeq ($(FFC),$(filter $(FFC),ifort ifx))
 
   # opt management
   ifeq ($(OOPT),1)
-      FFLAGS =  -O -parallel  -g -traceback -heap-arrays
+      FFLAGS =  -O  -g -traceback -heap-arrays
   else
       FFLAGS = -O0 -check all -g -traceback
   endif
@@ -211,10 +197,11 @@ ifeq ($(FFC),ifort)
 
   FLIB    = $(EXTLib)
   ifeq ($(LLAPACK),1)
-    #FLIB += -mkl -lpthread
-    FLIB += -qmkl -lpthread
-    #FLIB +=  ${MKLROOT}/lib/libmkl_blas95_ilp64.a ${MKLROOT}/lib/libmkl_lapack95_ilp64.a ${MKLROOT}/lib/libmkl_intel_ilp64.a \
-    #         ${MKLROOT}/lib/libmkl_intel_thread.a ${MKLROOT}/lib/libmkl_core.a -liomp5 -lpthread -lm -ldl
+    ifeq ($(FFC),ifort)
+      FLIB += -mkl -lpthread
+    else # ifx
+      FLIB += -qmkl -lpthread
+    endif
   else
     FLIB += -lpthread
   endif
@@ -309,8 +296,10 @@ VPATH = SRC/sub_dnSVM TESTS
 
 dnSVM_SRCFILES = \
   sub_module_dnS.f90 sub_module_VecOFdnS.f90 sub_module_MatOFdnS.f90 \
-  sub_module_dnV.f90 sub_module_dnM.f90 sub_module_IntVM.f90 \
+  sub_module_dnV.f90 sub_module_dnM.f90 \
   sub_module_dnSVM.f90
+
+#  sub_module_dnV.f90 sub_module_dnM.f90 sub_module_IntVM.f90
 
 FiniteDiff_SRCFILES = mod_FiniteDiff.f90
 
@@ -326,20 +315,20 @@ $(info ************ OBJ: $(OBJ))
 #============= tests ===========================
 #===============================================
 .PHONY: ut
-ut: Test_FOR_EVRT.exe
+ut: Test_EVRT_dnSVM.exe
 	@echo "---------------------------------------"
-	@echo "Tests FOR_EVRT"
-	./Test_FOR_EVRT.exe > tests.log
+	@echo "Tests EVRT_dnSVM"
+	./Test_EVRT_dnSVM.exe > tests.log
 	grep "Number of" mod_dnSVM.log
 	@echo "---------------------------------------"
 #
-Test_FOR_EVRT.exe: $(OBJ_DIR)/Test_FOR_EVRT.o $(LIBA) $(EXTLib)
-	$(FFC) $(FFLAGS) -o Test_FOR_EVRT.exe $(OBJ_DIR)/Test_FOR_EVRT.o $(LIBA) $(FLIB)
-	@echo "  done Library: Test_FOR_EVRT.exe"
+Test_EVRT_dnSVM.exe: $(OBJ_DIR)/Test_EVRT_dnSVM.o $(LIBA) $(EXTLib)
+	$(FFC) $(FFLAGS) -o Test_EVRT_dnSVM.exe $(OBJ_DIR)/Test_EVRT_dnSVM.o $(LIBA) $(FLIB)
+	@echo "  done Library: Test_EVRT_dnSVM.exe"
 #
-$(OBJ_DIR)/Test_FOR_EVRT.o: $(LIBA) $(EXTLib)
+$(OBJ_DIR)/Test_EVRT_dnSVM.o: $(LIBA) $(EXTLib)
 #===============================================
-#============= Library: FOR_EVRT....a  =========
+#============= Library: EVRT_dnSVM....a  =======
 #===============================================
 .PHONY: lib
 lib: $(LIBA)
@@ -412,6 +401,6 @@ $(OBJ_DIR)/sub_module_dnV.o:          $(OBJ_DIR)/sub_module_dnS.o
 $(OBJ_DIR)/sub_module_dnM.o:          $(OBJ_DIR)/sub_module_dnV.o $(OBJ_DIR)/sub_module_dnS.o
 $(OBJ_DIR)/sub_module_dnSVM.o:        $(OBJ_DIR)/sub_module_dnS.o $(OBJ_DIR)/sub_module_VecOFdnS.o \
                                       $(OBJ_DIR)/sub_module_MatOFdnS.o $(OBJ_DIR)/sub_module_dnV.o\
-                                      $(OBJ_DIR)/sub_module_dnM.o $(OBJ_DIR)/sub_module_IntVM.o
+                                      $(OBJ_DIR)/sub_module_dnM.o
 
 $(OBJ_DIR)/mod_FiniteDiff.o:          $(OBJ_DIR)/sub_module_dnSVM.o

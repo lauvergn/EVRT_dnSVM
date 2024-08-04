@@ -32,7 +32,6 @@ MODULE mod_dnSVM
       USE mod_MatOFdnS
       USE mod_dnV
       USE mod_dnM
-      USE mod_IntVM
 
       IMPLICIT NONE
 
