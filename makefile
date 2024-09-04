@@ -54,13 +54,12 @@ OS :=$(shell uname)
 
 
 # Extension for the object directory and the library
+ext_obj=_$(FFC)_opt$(OOPT)_omp$(OOMP)_lapack$(LLAPACK)_int$(INT)
 ifeq ($(FFC),mpifort)
   extlibwi_obj:=_$(FFC)_$(MPICORE)_opt$(OOPT)_omp$(OOMP)_lapack$(LLAPACK)_int$(INT)
 else
-  extlibwi_obj:=_$(FFC)_opt$(OOPT)_omp$(OOMP)_lapack$(LLAPACK)_int$(INT)
+  extlibwi_obj:= $(ext_obj)
 endif
-extlib_obj:=_$(FFC)_opt$(OOPT)_omp$(OOMP)_lapack$(LLAPACK)_int$(INT)
-
 
 
 OBJ_DIR = obj/obj$(extlibwi_obj)
@@ -78,14 +77,15 @@ MAIN_path:= $(shell pwd)
 ifeq ($(ExtLibDIR),)
   ExtLibDIR := $(MAIN_path)/Ext_Lib
 endif
+$(shell [ -d $(ExtLibDIR) ] || (echo $(ExtLibDIR) "does not exist" ; exit 1))
 
 AD_DIR    = $(ExtLibDIR)/AD_dnSVM
-ADMOD_DIR = $(AD_DIR)/OBJ/obj$(extlib_obj)
-ADLIBA    = $(AD_DIR)/libAD_dnSVM$(extlib_obj).a
+ADMOD_DIR = $(AD_DIR)/OBJ/obj$(ext_obj)
+ADLIBA    = $(AD_DIR)/libAD_dnSVM$(ext_obj).a
 
 QD_DIR    = $(ExtLibDIR)/QDUtilLib
-QDMOD_DIR = $(QD_DIR)/OBJ/obj$(extlib_obj)
-QDLIBA    = $(QD_DIR)/libQD$(extlib_obj).a
+QDMOD_DIR = $(QD_DIR)/OBJ/obj$(ext_obj)
+QDLIBA    = $(QD_DIR)/libQD$(ext_obj).a
 
 EXTLib     = $(ADLIBA)  $(QDLIBA)
 EXTMod     = -I$(QDMOD_DIR) -I$(ADMOD_DIR)
@@ -109,15 +109,8 @@ $(info ***********COMPILED with:    $(MPICORE))
 endif
 $(info ***********OpenMP:           $(OOMP))
 $(info ***********Lapack:           $(LLAPACK))
-$(info ***********FFLAGS0:          $(FFLAGS0))
 $(info ***********FFLAGS:           $(FFLAGS))
-$(info ***********FLIB:             $(FLIB))
-$(info ************************************************************************)
-$(info ************************************************************************)
-$(info ***************** TNUM_ver: $(TNUM_ver))
-$(info ***************** TANA_ver: $(TANA_ver))
-$(info ****************** EVR_ver: $(EVR_ver))
-$(info ************************************************************************)
+$(info ***********EXTLib:           $(EXTLib))
 $(info ************************************************************************)
 #==========================================
 VPATH = SRC/sub_dnSVM TESTS
@@ -126,8 +119,6 @@ dnSVM_SRCFILES = \
   sub_module_dnS.f90 sub_module_VecOFdnS.f90 sub_module_MatOFdnS.f90 \
   sub_module_dnV.f90 sub_module_dnM.f90 \
   sub_module_dnSVM.f90
-
-#  sub_module_dnV.f90 sub_module_dnM.f90 sub_module_IntVM.f90
 
 FiniteDiff_SRCFILES = mod_FiniteDiff.f90
 
@@ -198,30 +189,39 @@ zip: cleanall
 	@echo "  done zip"
 #===============================================
 #=== external libraries ========================
-# AD_dnSVM + QDUtil
+# AD_dnSVM + QDUTIL Lib
 #===============================================
 #
-$(ADLIBA):
-	@test -d $(ExtLibDIR) || (echo $(ExtLibDIR) "does not exist" ; exit 1)
-	@test -d $(AD_DIR) || (cd $(ExtLibDIR) ; ./get_AD_dnSVM.sh  $(EXTLIB_TYPE))
-	@test -d $(AD_DIR) || (echo $(AD_DIR) "does not exist" ; exit 1)
-	cd $(AD_DIR) ; make lib FC=$(FFC) OPT=$(OOPT) OMP=$(OOMP) LAPACK=$(LLAPACK) INT=$(INT) ExtLibDIR=$(ExtLibDIR) CompilersDIR=$(CompilersDIR)
-	@echo "  done " $(AD_DIR) " in "$(BaseName)
+.PHONY: getlib
+getlib:
+	cd $(ExtLibDIR) ; ./get_Lib.sh QDUtilLib dev
+	cd $(ExtLibDIR) ; ./get_Lib.sh AD_dnSVM dev
 #
-$(QDLIBA):
-	@test -d $(ExtLibDIR) || (echo $(ExtLibDIR) "does not exist" ; exit 1)
-	@test -d $(QD_DIR) || (cd $(ExtLibDIR) ; ./get_QDUtilLib.sh $(EXTLIB_TYPE))
-	@test -d $(QD_DIR) || (echo $(QD_DIR) "does not exist" ; exit 1)
-	cd $(QD_DIR) ; make lib FC=$(FFC) OPT=$(OOPT) OMP=$(OOMP) LAPACK=$(LLAPACK) INT=$(INT) ExtLibDIR=$(ExtLibDIR) CompilersDIR=$(CompilersDIR)
-	@echo "  done " $(QDLIBA) " in "$(BaseName)
-##
+$(QDLIBA): getlib
+	cd $(ExtLibDIR)/QDUtilLib ; make lib FC=$(FFC) OPT=$(OOPT) OMP=$(OOMP) LAPACK=$(LLAPACK) INT=$(INT) ExtLibDIR=$(ExtLibDIR) CompilersDIR=$(CompilersDIR)
+	@test -f $(QDLIBA) || (echo $(QDLIBA) "does not exist" ; exit 1)
+	@echo "  done " $(QDLIBA)
+$(ADLIBA): getlib
+	cd $(ExtLibDIR)/AD_dnSVM ; make lib FC=$(FFC) OPT=$(OOPT) OMP=$(OOMP) LAPACK=$(LLAPACK) INT=$(INT) ExtLibDIR=$(ExtLibDIR) CompilersDIR=$(CompilersDIR)
+	@test -f $(ADLIBA) || (echo $(ADLIBA) "does not exist" ; exit 1)
+	@echo "  done " $(ADLIBA)
+#
 .PHONY: clean_extlib
 clean_extlib:
 	cd $(ExtLibDIR) ; ./cleanlib
+#
+#===============================================
+#=== Add links to directories for fpm ==========
+#===============================================
+#
+.PHONY: fpmlink
+fpmlink: getlib
+	ln -s Tests/RES_files RES_files
+	ln -s Tests/DAT_files DAT_files
 #=======================================================================================
 #=======================================================================================
 #add dependence for parallelization
-$(OBJ): $(ADLIBA) $(QDLIBA)
+$(OBJ): | $(ADLIBA) $(QDLIBA)
 
 $(OBJ_DIR)/sub_module_VecOFdnS.o:     $(OBJ_DIR)/sub_module_dnS.o
 $(OBJ_DIR)/sub_module_MatOFdnS.o:     $(OBJ_DIR)/sub_module_dnS.o 
