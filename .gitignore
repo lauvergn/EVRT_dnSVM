@@ -4,5 +4,6 @@ obj/*
 *.a 
 *.log
 res
+SRC/*/*.i
 TESTS/*log
 TESTS/res*

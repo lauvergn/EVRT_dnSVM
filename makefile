@@ -216,8 +216,6 @@ clean_extlib:
 #
 .PHONY: fpmlink
 fpmlink: getlib
-	ln -s Tests/RES_files RES_files
-	ln -s Tests/DAT_files DAT_files
 #=======================================================================================
 #=======================================================================================
 #add dependence for parallelization
