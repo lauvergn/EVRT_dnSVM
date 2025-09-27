@@ -1,2 +1,0 @@
-The test (run_tests_WIToutHRK16.sh) generates an error when the options RKIND=real128 and WITHRK16=0 are used together.
-Therefore, the errors generated during the test (Makefile:85: *** ERROR: Incompatible options. Stop.) are expected.

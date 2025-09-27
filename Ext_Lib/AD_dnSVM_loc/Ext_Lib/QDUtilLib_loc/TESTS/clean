@@ -1,4 +1,0 @@
-#!/bin/bash
-
-rm -f res* *log
-rm -rf output
