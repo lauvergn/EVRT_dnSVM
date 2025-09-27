@@ -1,8 +1,6 @@
 #!/bin/bash
-lib=AD_dnSVM
-libShort=AD
-app=`ls APP/*.f90`
-base_app=$(basename "$app" .f90)
+lib=EVRT_dnSVM
+libShort=EVRT_dnSVM
 
 test=`ls Tests/*.f90`
 base_test=$(basename "$test" .f90)
@@ -24,10 +22,6 @@ echo "
 * ut : 
   Run some tests and analyses the number of errors
   The test executable is: "$base_test.x"
-
-* app :
-  Compilation of main fortran file: "$app"
-  The executables are: "$base_app.x"
 
 * clean :
   Remove the object files (with defined options), the executables, some log files (without the ones in the TESTS directory)
@@ -73,5 +67,4 @@ make FC=gfortran OPT=1 OMP=0 RKIND=real128
 
   It creates a library with the folowing name: lib"$libshort"_gfortran_opt1_omp0_lapack1_int4_real128.a
   The object and mod files are in OBJ/obj_gfortran_opt1_omp0_lapack1_int4_real128
-  Run the tests
 " | more
